@@ -224,6 +224,6 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Made with ❤️ by the SmartWay Team**
+**Made by Josh Ivan Sartin**
 
 Transform your learning experience with AI-powered study materials!
