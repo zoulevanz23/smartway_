@@ -1,0 +1,83 @@
+{
+  "name": "smartway",
+  "private": true,
+  "version": "2.0.0",
+  "description": "AI-powered study companion that generates flashcards, quizzes, and summaries from your documents and notes",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node local-api.cjs",
+    "dev:full": "concurrently \"node local-api.cjs\" \"vite\"",
+    "build": "vite build",
+    "start": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,scss}\"",
+    "preview": "vite preview",
+    "test:api": "curl https://smartway.vercel.app/api/health",
+    "clean": "rm -rf dist node_modules/.cache .vercel",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.3",
+    "axios": "^1.10.0",
+    "bootstrap": "^5.3.7",
+    "framer-motion": "^12.23.0",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vercel/node": "^3.2.0",
+    "@vitejs/plugin-react": "^4.5.2",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.29.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "prettier": "^3.9.6",
+    "sass": "^1.89.2",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.34.1",
+    "vercel": "^38.0.0",
+    "vite": "^5.4.11"
+  },
+  "keywords": [
+    "ai",
+    "education",
+    "study",
+    "flashcards",
+    "quiz",
+    "gemini",
+    "react",
+    "typescript",
+    "vercel",
+    "serverless"
+  ],
+  "author": "SmartWay Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jayjovaun/smartway.git"
+  },
+  "vercel": {
+    "framework": "vite",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "functions": {
+      "api/**/*.js": {
+        "runtime": "nodejs20.x"
+      }
+    }
+  }
+}

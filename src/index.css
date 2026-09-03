@@ -1,0 +1,4 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import './styles/theme.scss';
+
+/* All styling is centralized in src/styles/theme.scss (flat Bento design system). */

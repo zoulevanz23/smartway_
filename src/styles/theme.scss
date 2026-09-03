@@ -1,0 +1,570 @@
+// ============================================================
+// SmartWay Theme — Aurora / Gradient Design System
+// Dark, indigo-dominant. Gradients read as glowing light against
+// near-black; indigo is the anchor hue, violet/cyan/teal are guests.
+// ============================================================
+
+// ---------- Aurora palette ----------
+$bg: #05050c; // indigo-black base
+$bg-alt: #0a0a18; // raised layer behind cards
+$surface: #12102a; // card surface
+$surface-2: #171335; // hover / raised surface
+$surface-3: #1e1838; // active surface
+$border: rgba(129, 140, 248, 0.14); // indigo-tinted border
+$border-hover: rgba(129, 140, 248, 0.28);
+$text: #f1f0fa; // lavender-white
+$text-muted: rgba(241, 240, 250, 0.62);
+$text-faint: rgba(241, 240, 250, 0.38);
+
+// Accent ramp (cool only — no warm tones)
+$indigo: #4f46e5;
+$indigo-light: #818cf8;
+$violet: #8b5cf6;
+$fuchsia: #d946ef;
+$cyan: #22d3ee;
+$teal: #2dd4bf;
+
+$radius: 16px;
+$radius-sm: 11px;
+
+// ---------- Typography (paired system) ----------
+$font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+$font-body:
+  'Inter',
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  Helvetica,
+  Arial,
+  sans-serif;
+
+// ---------- Motion tokens (signature, reusable) ----------
+// "boot-up" / mission-control feel: fast attack, soft landing
+$ease-signature: cubic-bezier(0.16, 1, 0.3, 1);
+$ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+$dur-hero: 900ms;
+$dur-enter: 600ms;
+$dur-micro: 200ms;
+
+// ---------- Gradient recipes ----------
+$aurora-primary: linear-gradient(135deg, $indigo 0%, $violet 50%, $cyan 100%);
+$aurora-deep: linear-gradient(160deg, #05050c 0%, #171335 55%, $indigo 130%);
+$aurora-cool: linear-gradient(135deg, $indigo 0%, $cyan 60%, $teal 100%);
+$aurora-accent: linear-gradient(135deg, $violet 0%, $fuchsia 100%);
+
+// ---------- Ambient glow blobs (static blur, animate transform/opacity only) ----------
+.aurora-blob {
+  position: absolute;
+  width: 42vw;
+  height: 42vw;
+  max-width: 640px;
+  max-height: 640px;
+  min-width: 240px;
+  min-height: 240px;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform, opacity;
+  z-index: 0;
+}
+
+.aurora-blob-1 {
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.45), transparent 65%);
+}
+.aurora-blob-2 {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.28), transparent 60%);
+}
+.aurora-blob-3 {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.32), transparent 62%);
+}
+
+@keyframes aurora-drift-1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, 6%) scale(1.08);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes aurora-drift-2 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-5%, 3%) scale(1.05);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes aurora-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.aurora-blob--1 {
+  animation: aurora-drift-1 26s ease-in-out infinite;
+}
+.aurora-blob--2 {
+  animation: aurora-drift-2 34s ease-in-out infinite;
+  animation-delay: -8s;
+}
+.aurora-blob--3 {
+  animation:
+    aurora-drift-1 40s ease-in-out infinite,
+    aurora-pulse 12s ease-in-out infinite;
+  animation-delay: -20s;
+}
+
+// Reduces motion globally (and hide decorative blobs' drift for reduced-motion users)
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// Mobile: fewer, smaller blobs for performance
+@media (max-width: 768px) {
+  .aurora-blob {
+    width: 60vw;
+    height: 60vw;
+    filter: blur(60px);
+  }
+}
+
+// ---------- Base ----------
+body {
+  background-color: $bg;
+  background-image: radial-gradient(
+    ellipse at 50% -10%,
+    rgba(79, 70, 229, 0.28) 0%,
+    rgba(5, 5, 12, 0) 55%
+  );
+  color: $text;
+  font-family: $font-body;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Display face — use for headlines, numerals, the signature moment only
+.font-display,
+h1,
+h2,
+h3,
+.h1,
+.h2,
+.h3,
+.display-1,
+.display-2,
+.display-3,
+.display-4,
+.display-5,
+.display-6 {
+  font-family: $font-display;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+// Page-level ambient blob container (fixed behind content)
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+.aurora-bg-top-left {
+  top: -12%;
+  left: -8%;
+}
+.aurora-bg-top-right {
+  top: -5%;
+  right: -15%;
+}
+.aurora-bg-bottom {
+  bottom: -18%;
+  left: 30%;
+}
+
+// ---------- Layout ----------
+// Deep aurora page background
+.bg-gradient-main {
+  background-color: $bg;
+  background-image: radial-gradient(
+    ellipse at 50% -10%,
+    rgba(79, 70, 229, 0.28) 0%,
+    rgba(5, 5, 12, 0) 55%
+  );
+  min-height: 100vh;
+  position: relative;
+}
+
+// ---------- Typography ----------
+.text-bright {
+  color: $text !important;
+}
+.text-bright-muted {
+  color: $text-muted !important;
+}
+.text-bright-faint {
+  color: $text-faint !important;
+}
+
+.text-accent-indigo {
+  color: $indigo-light !important;
+}
+.text-accent-purple {
+  color: $violet !important;
+}
+.text-accent-cyan {
+  color: $cyan !important;
+}
+.text-accent-teal {
+  color: $teal !important;
+}
+.text-accent-fuchsia {
+  color: $fuchsia !important;
+}
+
+// Gradient headline text — use sparingly (hero, section titles)
+.gradient-text {
+  background-image: linear-gradient(120deg, $indigo-light 0%, $violet 40%, $cyan 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: $indigo-light; // solid fallback if background-clip unsupported
+  text-shadow: 0 0 40px rgba(99, 91, 255, 0.25);
+}
+
+// ---------- Cards (Aurora surfaces) ----------
+.card-glass,
+.bento-tile {
+  background:
+    linear-gradient(180deg, rgba(79, 70, 229, 0.1) 0%, rgba(18, 16, 42, 1) 8%),
+    linear-gradient(0deg, rgba(34, 211, 238, 0.04), rgba(34, 211, 238, 0.04)), $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  color: $text;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.12);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.card-glass > *,
+.bento-tile > * {
+  position: relative;
+  z-index: 2;
+}
+
+.card-glass:hover,
+.bento-tile:hover {
+  border-color: $border-hover;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 44px rgba(139, 92, 246, 0.18);
+}
+
+// A warmer, highlighted tile variant (keep cool ramp though)
+.bento-tile--accent {
+  border-image: linear-gradient(135deg, $violet, $cyan) 1;
+  box-shadow: 0 12px 40px rgba(34, 211, 238, 0.12);
+}
+
+// ---------- Buttons ----------
+.btn {
+  position: relative;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-radius: $radius-sm;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+
+// Primary: aurora gradient fill + glow
+.btn-primary {
+  background-image: $aurora-primary;
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 24px rgba(99, 91, 255, 0.35);
+}
+
+.btn-primary:hover {
+  color: #fff;
+  background-image: linear-gradient(135deg, #6d5fe8 0%, #a876f7 50%, #3ddbf0 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(139, 92, 246, 0.45);
+}
+
+// Secondary CTA (violet/fuchsia outlier gradient — used sparingly)
+.btn-secondary-aurora {
+  background-image: $aurora-accent;
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.3);
+}
+.btn-secondary-aurora:hover {
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(217, 70, 239, 0.35);
+}
+
+// Outline: gradient border (via background + padding trick)
+.btn-outline-light,
+.btn-outline-primary {
+  background: rgba(18, 16, 42, 0.6);
+  color: $text;
+  border: 1px solid $border-hover;
+  backdrop-filter: blur(6px);
+}
+.btn-outline-light:hover,
+.btn-outline-primary:hover {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: $indigo-light;
+  color: $indigo-light;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-image: $aurora-cool;
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 24px rgba(45, 212, 191, 0.3);
+}
+.btn-success:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background-color: #e5484d;
+  color: #fff;
+  border: none;
+}
+.btn-danger:hover {
+  color: #fff;
+  background-color: #d43f3f;
+}
+
+// Focus states (gradient-accented ring + solid fallback)
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+  outline: 2px solid $indigo-light;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(99, 91, 255, 0.18);
+}
+
+// ---------- Forms ----------
+.form-control {
+  background: rgba(18, 16, 42, 0.8);
+  border: 1px solid $border;
+  color: $text;
+  border-radius: $radius-sm;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+  background: rgba(18, 16, 42, 0.9);
+  border-color: $indigo-light;
+  color: $text;
+  box-shadow: 0 0 0 5px rgba(99, 91, 255, 0.18);
+}
+
+.form-control:disabled,
+.form-control[disabled],
+textarea:disabled {
+  background: rgba(18, 16, 42, 0.6) !important;
+  color: $text-muted !important;
+  border-color: $border !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: $text-muted !important;
+  cursor: not-allowed;
+}
+
+.form-control::placeholder {
+  color: $text-faint;
+}
+
+.form-label {
+  color: $text;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+// ---------- Progress ----------
+.progress {
+  background-color: rgba(18, 16, 42, 0.9);
+  border: 1px solid $border;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  border-radius: 999px;
+  transition: width 0.5s ease;
+  background-image: $aurora-primary;
+}
+
+// ---------- Alerts ----------
+.alert {
+  border-radius: $radius-sm;
+  border: 1px solid transparent;
+}
+
+.alert-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: $text;
+}
+
+.alert-success {
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.35);
+  color: $text;
+}
+
+.alert-info {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(99, 91, 255, 0.35);
+  color: $text;
+}
+
+// ---------- Spinner ----------
+.spinner-border {
+  border-width: 3px;
+  color: $indigo-light !important;
+}
+
+// ---------- Nav (glassmorphism) ----------
+.glass-nav {
+  background: rgba(10, 10, 24, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: 0 8px 32px rgba(5, 5, 12, 0.5);
+}
+
+// ---------- Flashcards ----------
+.flashcard-container {
+  perspective: 1000px;
+}
+.flashcard {
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+.flashcard-side {
+  backface-visibility: hidden;
+  border-radius: $radius;
+}
+
+// ---------- Interactive card ----------
+.interactive-card {
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+  cursor: pointer;
+  border-radius: $radius;
+}
+.interactive-card:hover {
+  transform: translateY(-3px);
+  border-color: $border-hover;
+  box-shadow: 0 14px 44px rgba(139, 92, 246, 0.18);
+}
+
+// ---------- Responsive hero + console (mobile) ----------
+.hero-section {
+  min-height: 74vh;
+}
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: auto;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  .hero-section .hero-console-col {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  .study-console-wrap {
+    perspective: none !important;
+    filter: drop-shadow(0 12px 30px rgba(79, 70, 229, 0.3)) !important;
+  }
+  .study-console-tilt {
+    transform: none !important;
+  }
+  .glass-nav {
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+// ---------- Helpers ----------
+.cursor-pointer {
+  cursor: pointer;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
