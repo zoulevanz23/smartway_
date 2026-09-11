@@ -7,12 +7,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-// Initialize Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // We don't need auth for file uploads
+  auth: { persistSession: false },
+  storage: {
+    cacheMaxAge: 0,
   },
 });
 
-// Storage bucket name - overridable via env, defaults to 'uploads'
 export const STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'uploads';
+export const getSignedUrl = async (filePath: string, expiresInSeconds = 3600) => {
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(filePath, expiresInSeconds);
+  if (error) throw error;
+  return data.signedUrl;
+};
