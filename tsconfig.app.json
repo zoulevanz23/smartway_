@@ -27,7 +27,9 @@
       "@assets/*": ["assets/*"],
       "@api/*": ["api/*"],
       "@pages/*": ["pages/*"],
-      "@lib/*": ["lib/*"]
+      "@lib/*": ["lib/*"],
+      "@hooks/*": ["hooks/*"],
+      "@store/*": ["store/*"]
     },
     "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true,
