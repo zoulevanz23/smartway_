@@ -1,4 +1,5 @@
-import type { StudyPackResult } from '@api/generate';
+import type { StudyPackResult, GenerationSettings } from '@api/generate';
+import { sanitizeSettings, MIN_CONTENT_COUNT } from '@api/generate';
 
 const STOP = new Set([
   'the',
@@ -112,21 +113,25 @@ function clusterSentences(scored: { s: string; score: number }[], n: number): st
   return picked;
 }
 
-export function buildFallbackPack(content: string): StudyPackResult {
+export function buildFallbackPack(content: string, options?: Partial<GenerationSettings>): StudyPackResult {
+  const targets = sanitizeSettings(options);
+  const targetCards = Math.max(MIN_CONTENT_COUNT, targets.flashcardCount);
+  const targetQuiz = Math.max(MIN_CONTENT_COUNT, targets.quizCount);
   const sents = sentencesOf(content);
   if (sents.length === 0) {
     const fallback = content.slice(0, 200);
     return {
       summary: { overview: fallback, keyPoints: [], definitions: [] },
-      flashcards: [{ front: 'What is the main topic?', back: fallback }],
-      quiz: [
-        {
-          question: 'What does the content describe?',
-          options: ['Main topic', 'Unrelated A', 'Unrelated B', 'Unrelated C'],
-          correct: 0,
-          explanation: fallback,
-        },
-      ],
+      flashcards: Array.from({ length: targetCards }, (_, i) => ({
+        front: i === 0 ? 'What is the main topic?' : `What is the main topic (point ${i + 1})?`,
+        back: fallback,
+      })),
+      quiz: Array.from({ length: targetQuiz }, (_, i) => ({
+        question: i === 0 ? 'What does the content describe?' : `What does the content describe (point ${i + 1})?`,
+        options: ['Main topic', `Unrelated A${i}`, `Unrelated B${i}`, `Unrelated C${i}`],
+        correct: 0,
+        explanation: fallback,
+      })),
     };
   }
 
@@ -168,38 +173,40 @@ export function buildFallbackPack(content: string): StudyPackResult {
       });
   }
 
-  // Flashcards: cloze deletion on keyword
-  const flashcards = keySents
-    .slice(0, Math.min(8, Math.max(5, Math.floor(sents.length / 4))))
-    .map((s) => {
-      const ws = wordsOf(s);
-      const kw = ws.find((w) => kws.includes(w)) || ws[0] || 'concept';
-      const front = s.replace(new RegExp(`\\b${kw}\\b`, 'i'), '___');
-      return { front: front.length > 10 ? front : `What is ${kw}?`, back: s };
-    });
+  // Flashcards: cloze deletion on a keyword. When the source has fewer sentences
+  // than requested, sentences are reused but the cloze keyword rotates so each
+  // card still targets a different term.
+  const cardPool = keySents.length > 0 ? keySents : scored.map((x) => x.s);
+  const flashcards = Array.from({ length: targetCards }, (_, i) => {
+    const s = cardPool[i % cardPool.length];
+    const ws = wordsOf(s);
+    const candidates = ws.filter((w) => kws.includes(w));
+    const kw = candidates.length > 0 ? candidates[i % candidates.length] : ws[0] || kws[i % kws.length] || 'concept';
+    const front = s.replace(new RegExp(`\\b${kw}\\b`, 'i'), '___');
+    return { front: front.length > 10 ? front : `What is ${kw}?`, back: s };
+  });
 
   // Quiz: blank keyword, distractors from other keywords
-  const quiz = keySents
-    .slice(0, Math.min(8, Math.max(5, Math.floor(sents.length / 5))))
-    .map((s) => {
-      const ws = wordsOf(s);
-      const kw = ws.find((w) => kws.includes(w)) || kws[0];
-      const correct = kw.charAt(0).toUpperCase() + kw.slice(1);
-      const distractors = kws
-        .filter((k) => k !== kw)
-        .slice(0, 3)
-        .map((k) => k.charAt(0).toUpperCase() + k.slice(1));
-      while (distractors.length < 3)
-        distractors.push('Related concept ' + (distractors.length + 1));
-      const options = [correct, ...distractors].sort(() => Math.random() - 0.5);
-      const correctIdx = options.indexOf(correct);
-      return {
-        question: s.replace(new RegExp(`\\b${kw}\\b`, 'i'), '___'),
-        options,
-        correct: correctIdx,
-        explanation: s,
-      };
-    });
+  const quiz = Array.from({ length: targetQuiz }, (_, i) => {
+    const s = cardPool[i % cardPool.length];
+    const ws = wordsOf(s);
+    const candidates = ws.filter((w) => kws.includes(w));
+    const kw = candidates.length > 0 ? candidates[i % candidates.length] : ws[0] || kws[0] || 'concept';
+    const correct = kw.charAt(0).toUpperCase() + kw.slice(1);
+    const distractors = kws
+      .filter((k) => k !== kw)
+      .slice(i % 3, (i % 3) + 3)
+      .map((k) => k.charAt(0).toUpperCase() + k.slice(1));
+    while (distractors.length < 3) distractors.push('Related concept ' + (distractors.length + 1));
+    const options = [correct, ...distractors.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = options.indexOf(correct);
+    return {
+      question: s.replace(new RegExp(`\\b${kw}\\b`, 'i'), '___'),
+      options,
+      correct: correctIdx,
+      explanation: s,
+    };
+  });
 
   return {
     summary: { overview, keyPoints, definitions },
