@@ -21,6 +21,7 @@ import {
 import { Logo } from '@components/Logo';
 import { Magnetic } from '@components/Magnetic';
 import { StudyConsole } from '@components/StudyConsole';
+import { SocialLinks } from '@components/SocialLinks';
 
 const OPS_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -373,9 +374,10 @@ export const Home: React.FC = () => {
           >
             Your next study session, <span className="gradient-text">already mounted.</span>
           </h2>
-          <p className="mb-4" style={{ color: 'rgba(241,240,250,0.55)' }}>
+          <p className="mb-3" style={{ color: 'rgba(241,240,250,0.55)' }}>
             Made by Josh Ivan Sartin. All rights reserved. {year}
           </p>
+          <SocialLinks className="mb-4" />
           <Magnetic>
             <button
               onClick={() => navigate('/app')}
