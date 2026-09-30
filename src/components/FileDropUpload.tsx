@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   FiUpload,
   FiX,
@@ -33,7 +33,9 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -50,6 +52,7 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
       setIsUploading(true);
       setUploadProgress(0);
       setUploadResult(null);
+      setLocalError(null);
 
       try {
         const result = await uploadFile(file, (progress) => {
@@ -59,8 +62,10 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
         setUploadResult(result);
         onUploadComplete(result);
       } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to upload file';
+        setLocalError(message);
         console.error('Upload error:', error);
-        onUploadError(error instanceof Error ? error.message : 'Failed to upload file');
+        onUploadError(message);
       } finally {
         setIsUploading(false);
       }
@@ -77,20 +82,28 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
         'text/plain',
       ];
 
-      if (!allowedTypes.includes(file.type)) {
-        onUploadError(
-          'Invalid file type. Please upload PDF (.pdf), Word (.docx, .doc), or text (.txt) files.'
-        );
+      const reject = (message: string) => {
+        setLocalError(message);
+        onUploadError(message);
+      };
+
+      // Some browsers report an empty MIME type; fall back to the extension.
+      const looksAllowed =
+        allowedTypes.includes(file.type) ||
+        (!file.type && /\.(pdf|docx?|txt)$/i.test(file.name));
+
+      if (!looksAllowed) {
+        reject('Invalid file type. Please upload PDF (.pdf), Word (.docx, .doc), or text (.txt) files.');
         return;
       }
 
       if (file.size > 50 * 1024 * 1024) {
-        onUploadError('File size too large. Please upload a file smaller than 50MB.');
+        reject('File size too large. Please upload a file smaller than 50MB.');
         return;
       }
 
       if (file.size === 0) {
-        onUploadError('File is empty. Please select a valid file.');
+        reject('File is empty. Please select a valid file.');
         return;
       }
 
@@ -113,8 +126,20 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
   );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelect(e.target.files[0]);
+    const file = e.target.files && e.target.files[0];
+    // Clear the value so choosing the same file twice still fires onChange.
+    e.target.value = '';
+    if (file) handleFileSelect(file);
+  };
+
+  const openPicker = useCallback(() => {
+    if (!disabled) fileInputRef.current?.click();
+  }, [disabled]);
+
+  const handleZoneKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPicker();
     }
   };
 
@@ -122,6 +147,7 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
     setUploadResult(null);
     setUploadProgress(0);
     setIsUploading(false);
+    setLocalError(null);
   };
 
   if (uploadResult) {
@@ -181,6 +207,10 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
       <label className="form-label fw-semibold fs-6 mb-3">Upload Your Document</label>
 
       <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label="Upload your document: drop a file here or press Enter to browse"
+        aria-disabled={disabled}
         className={`border text-center ${dragActive ? 'border-accent' : ''} ${disabled ? 'opacity-50' : ''}`}
         style={{
           borderRadius: '12px',
@@ -196,6 +226,8 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
           padding: '2rem 1rem',
           cursor: disabled ? 'not-allowed' : 'pointer',
         }}
+        onClick={openPicker}
+        onKeyDown={handleZoneKeyDown}
         onDragEnter={disabled ? undefined : handleDrag}
         onDragLeave={disabled ? undefined : handleDrag}
         onDragOver={disabled ? undefined : handleDrag}
@@ -220,6 +252,7 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
             <h5 className="text-bright mb-2">Drop your document here</h5>
             <p className="text-bright-muted mb-3">or click to browse files</p>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".pdf,.docx,.doc,.txt"
               onChange={handleFileInput}
@@ -227,20 +260,25 @@ export const FileDropUpload: React.FC<FileDropUploadProps> = ({
               id="supabaseFileInput"
               disabled={disabled || isUploading}
             />
-            <label
-              htmlFor="supabaseFileInput"
+            <span
               className="btn btn-outline-primary px-4 py-2"
               style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
             >
               <FiFile className="me-2" />
               Choose File
-            </label>
+            </span>
             <div className="text-bright-muted small mt-3">
               Supports: PDF, Word (.docx, .doc), Text files (max 50MB)
             </div>
           </>
         )}
       </div>
+
+      {localError && (
+        <div className="alert alert-danger mt-3 mb-0" role="alert">
+          {localError}
+        </div>
+      )}
     </div>
   );
 };
