@@ -47,7 +47,16 @@ export const uploadFile = async (
 
     return { downloadURL: signedURL, fileName: file.name, fileSize: file.size, signedURL };
   } catch (error) {
-    if (error instanceof Error) throw new Error(`Upload failed: ${error.message}`);
+    if (error instanceof Error) {
+      // A DNS/offline failure surfaces as a bare "Failed to fetch", which tells
+      // the user nothing. Name the actual problem.
+      if (/failed to fetch|networkerror|load failed/i.test(error.message)) {
+        throw new Error(
+          'Cannot reach the document storage service. Check your internet connection, and verify the Supabase project URL in .env is correct and running.'
+        );
+      }
+      throw new Error(`Upload failed: ${error.message}`);
+    }
     throw new Error('Failed to upload file.');
   }
 };
