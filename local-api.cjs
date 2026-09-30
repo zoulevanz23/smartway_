@@ -6,6 +6,69 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const Module = require('module');
+
+// api/*.js are CommonJS sources but package.json sets "type": "module",
+// so plain require() treats them as ESM and crashes ("require is not defined").
+// Force-compile them as CJS, and shim ./_lib/* which only exist as .ts sources.
+function loadCjsHandler(relativePath) {
+  const filename = path.join(__dirname, relativePath);
+  const content = fs.readFileSync(filename, 'utf8');
+  const m = new Module(filename, module);
+  m.filename = filename;
+  m.paths = Module._nodeModulePaths(path.dirname(filename));
+  m._compile(content, filename);
+  const exported = m.exports;
+  return exported && exported.default ? exported.default : exported;
+}
+
+const __origModuleLoad = Module._load;
+Module._load = function (request, parent, isMain) {
+  const normalized = (request || '').replace(/\\/g, '/');
+  const isSsrfLib = normalized === './_lib/ssrf' || normalized === '../_lib/ssrf' ||
+    normalized.endsWith('/_lib/ssrf') || normalized.endsWith('_lib/ssrf.js');
+  if (isSsrfLib) {
+    return {
+      isAllowedDownloadSize: (buffer) =>
+        buffer.length <= parseInt(process.env.MAX_DOWNLOAD_BYTES || '10485760', 10),
+      isAllowedFileUrl: (fileUrl) => {
+        try {
+          const url = new URL(fileUrl);
+          return url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/');
+        } catch { return false; }
+      },
+    };
+  }
+  const isValidatorsLib = normalized === './_lib/validators' || normalized === '../_lib/validators' ||
+    normalized.endsWith('/_lib/validators') || normalized.endsWith('_lib/validators.js');
+  if (isValidatorsLib) {
+    try {
+      const { z } = __origModuleLoad.call(this, 'zod', parent, isMain);
+      // Keep in sync with api/_lib/validators.ts
+      const generateSchema = z.object({
+        text: z.string().min(10).max(20000).optional(),
+        fileUrl: z.string().url().optional(),
+        flashcardCount: z.number().int().min(1).max(100).optional(),
+        quizCount: z.number().int().min(1).max(100).optional(),
+      });
+      return { generateSchema };
+    } catch {
+      return {
+        generateSchema: {
+          safeParse: (body) => {
+            if (!body || typeof body !== 'object') {
+              return { success: false, error: { flatten: () => ({ formErrors: ['Invalid body'] }) } };
+            }
+            if (typeof body.text === 'string' && body.text.length >= 10) return { success: true, data: body };
+            if (typeof body.fileUrl === 'string' && body.fileUrl.startsWith('http')) return { success: true, data: body };
+            return { success: false, error: { flatten: () => ({ formErrors: ['Provide text (>=10 chars) or fileUrl'] }) } };
+          },
+        },
+      };
+    }
+  }
+  return __origModuleLoad.call(this, request, parent, isMain);
+};
 
 const envPath = path.join(__dirname, '.env');
 if (fs.existsSync(envPath)) {
@@ -49,9 +112,9 @@ function wrap(handler) {
   };
 }
 
-const generateHandler = require('./api/generate.js');
-const healthHandler = require('./api/health.js');
-const packHandler = require('./api/pack.js');
+const generateHandler = loadCjsHandler('./api/generate.js');
+const healthHandler = loadCjsHandler('./api/health.js');
+const packHandler = loadCjsHandler('./api/pack.js');
 const wrappedGenerate = wrap(generateHandler);
 const wrappedHealth = wrap(healthHandler);
 const wrappedPack = wrap(packHandler);
