@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStudyPackStore } from '@store/studyPackStore';
-import type { StudyPackResult } from '@api/generate';
+import type { StudyPackResult, StudyPackRecord } from '@api/generate';
 
 export function useStudyPack() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { packs, getPack, setPack } = useStudyPackStore();
+  const packs = useStudyPackStore((s) => s.packs);
+  const history = useStudyPackStore((s) => s.history);
+  const setPack = useStudyPackStore((s) => s.setPack);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentPack = slug ? getPack(slug) : undefined;
+  // Local History first — a saved record is authoritative, so opening one never
+  // triggers a network call or a regeneration.
+  const record: StudyPackRecord | undefined = slug ? history.find((r) => r.id === slug) : undefined;
+  const currentPack: StudyPackResult | undefined = record?.pack ?? (slug ? packs[slug] : undefined);
 
   useEffect(() => {
     if (!slug || currentPack) return;
@@ -32,5 +37,5 @@ export function useStudyPack() {
     return newSlug;
   };
 
-  return { currentPack, loading, error, saveLocally, packs };
+  return { currentPack, record, loading, error, saveLocally, packs };
 }
