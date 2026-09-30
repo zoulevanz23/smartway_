@@ -98,3 +98,26 @@ export function buildSummaryContent(data: SummaryData): string {
   }
   return lines.join('\n');
 }
+
+/**
+ * Best-effort human-readable title for a history entry.
+ * Works for space-delimited and CJK text (no whitespace required to find a boundary).
+ */
+export function deriveTitle(source?: string | null, overview?: string | null): string {
+  const clean = (source || '').replace(/\s+/g, ' ').trim();
+  if (clean) {
+    const sentence =
+      clean
+        .split(/[.!?。！？\n]/)
+        .map((s) => s.trim())
+        .find((s) => s.length >= 12) || clean;
+    if (sentence.length >= 3) {
+      return sentence.length > 60 ? `${sentence.slice(0, 60).trim()}…` : sentence;
+    }
+  }
+  const fallback = (overview || '').replace(/\s+/g, ' ').trim();
+  if (fallback.length >= 3) {
+    return fallback.length > 60 ? `${fallback.slice(0, 60).trim()}…` : fallback;
+  }
+  return 'Untitled Study Pack';
+}
