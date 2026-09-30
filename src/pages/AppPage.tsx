@@ -5,9 +5,12 @@ import { FiBookOpen, FiCreditCard, FiHelpCircle, FiRefreshCcw, FiZap, FiStar, Fi
 import { InputForm } from '@components/InputForm';
 import { Logo } from '@components/Logo';
 import { ErrorModal } from '@components/ErrorModal';
+import { HistoryPanel } from '@components/HistoryPanel';
 import type { StudyPackResult } from '@api/generate';
+import { DEFAULT_GENERATION_SETTINGS, sanitizeSettings, type GenerationSettings, type StudyPackRecord } from '@api/generate';
 import { useStudyPackStore } from '@store/studyPackStore';
 import { buildFallbackPack } from '@utils/fallbackStudyPack';
+import { deriveTitle } from '@utils/studyPack';
 
 const LOADING_FACTS = [
   { icon: FiStar, text: 'Active recall beats re-reading — flashcards strengthen memory 50% faster.' },
@@ -21,10 +24,26 @@ const LOADING_FACTS = [
 function isRetryableError(msg: string): boolean { return /rate limit|429|503|high demand|overloaded|temporarily busy/i.test(msg); }
 function isUserError(msg: string): boolean { return /No content provided|Content too short|Invalid file type|file size|No text content|Failed to download|Unable to access/i.test(msg); }
 
+// UTF-8 safe cache key. btoa() throws InvalidCharacterError on anything outside
+// Latin-1 (Japanese, emoji, curly quotes), which previously killed the submit
+// handler before it ever reached fetch.
+function buildCacheKey(source: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  const sample = source.slice(0, 8000);
+  for (let i = 0; i < sample.length; i++) {
+    const c = sample.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 + c + i, 0x85ebca6b) >>> 0;
+  }
+  return h1.toString(36) + h2.toString(36) + '_' + source.length;
+}
+
 export const AppPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { packs, setPack } = useStudyPackStore();
+  const { packs, setPack, addRecord } = useStudyPackStore();
+  const [settings, setSettings] = useState<GenerationSettings>(DEFAULT_GENERATION_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<StudyPackResult | null>(null);
   const [isFallback, setIsFallback] = useState(false);
@@ -49,12 +68,42 @@ export const AppPage: React.FC = () => {
     return () => { if (countdownRef.current) window.clearInterval(countdownRef.current); };
   }, []);
 
+  // A file dropped anywhere outside the drop zone makes the browser navigate to
+  // that file, which wipes the page and looks like an unexplained refresh.
+  useEffect(() => {
+    const blockFileDrop = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
+    };
+    window.addEventListener('dragover', blockFileDrop);
+    window.addEventListener('drop', blockFileDrop);
+    return () => {
+      window.removeEventListener('dragover', blockFileDrop);
+      window.removeEventListener('drop', blockFileDrop);
+    };
+  }, []);
+
   useEffect(() => {
     if (!isLoading) return;
     setFactIndex(0);
     const id = window.setInterval(() => setFactIndex((i) => (i + 1) % LOADING_FACTS.length), 2800);
     return () => window.clearInterval(id);
   }, [isLoading]);
+
+  const saveToHistory = (pack: StudyPackResult, sourceText: string | undefined, used: GenerationSettings, isFallback: boolean) => {
+    // Deterministic id so re-submitting the same source with the same counts
+    // updates the existing row instead of piling up duplicates.
+    const id = buildCacheKey(`${sourceText || ''}::fc=${used.flashcardCount}::qz=${used.quizCount}`);
+    const record: StudyPackRecord = {
+      id,
+      title: deriveTitle(sourceText, pack.summary?.overview),
+      createdAt: new Date().toISOString(),
+      settings: used,
+      pack,
+      isFallback,
+    };
+    addRecord(record);
+    return record;
+  };
 
   const handleSubmit = async (data: { text?: string; fileUrl?: string }) => {
     const now = Date.now();
@@ -66,12 +115,25 @@ export const AppPage: React.FC = () => {
       return;
     }
 
-    const cacheKeySource = data.text || data.fileUrl || '';
-    const cacheKey = cacheKeySource ? btoa(cacheKeySource.slice(0, 8000)).slice(0, 32) + '_' + cacheKeySource.length : '';
+    const requested = sanitizeSettings(settings);
+
+    // The counts must be part of the key: same source with different counts is a
+    // different request, and reusing the old entry would silently serve a pack
+    // with the wrong number of cards.
+    let cacheKey = '';
+    try {
+      const cacheKeySource = `${data.text || data.fileUrl || ''}::fc=${requested.flashcardCount}::qz=${requested.quizCount}`;
+      cacheKey = cacheKeySource ? buildCacheKey(cacheKeySource) : '';
+    } catch {
+      cacheKey = '';
+    }
     if (cacheKey && packs[cacheKey]) {
       setGeneratedContent(packs[cacheKey]);
       setIsFallback(false);
       setError(null);
+      // Idempotent thanks to the deterministic id, so a cache hit also (re)files
+      // the pack into History instead of leaving it invisible there.
+      saveToHistory(packs[cacheKey], data.text, requested, false);
       return;
     }
 
@@ -86,7 +148,11 @@ export const AppPage: React.FC = () => {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data.text ? { text: data.text } : { fileUrl: data.fileUrl }),
+        body: JSON.stringify({
+          ...(data.text ? { text: data.text } : { fileUrl: data.fileUrl }),
+          flashcardCount: requested.flashcardCount,
+          quizCount: requested.quizCount,
+        }),
       });
       let parsed = null;
       const text = await response.text();
@@ -107,6 +173,7 @@ export const AppPage: React.FC = () => {
       setIsFallback(false);
       setError(null);
       if (cacheKey) setPack(cacheKey, parsed);
+      saveToHistory(parsed, data.text, requested, false);
       try {
         const res = await fetch('/api/pack', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content_hash: cacheKey, pack: parsed }) });
         if (res.ok) { const j = await res.json(); if (j.slug) setCopiedSlug(j.slug); }
@@ -132,27 +199,30 @@ export const AppPage: React.FC = () => {
           setShowErrorModal(true);
           const fallbackText = data.text || lastContentText;
           if (fallbackText && fallbackText.length > 50) {
-            const pack = buildFallbackPack(fallbackText);
+            const pack = buildFallbackPack(fallbackText, settings);
             setGeneratedContent(pack);
             setIsFallback(true);
+            saveToHistory(pack, fallbackText, sanitizeSettings(settings), true);
           }
           return;
         }
         const fallbackText = data.text || lastContentText;
         if (fallbackText && fallbackText.length > 50) {
-          const pack = buildFallbackPack(fallbackText);
+          const pack = buildFallbackPack(fallbackText, settings);
           setGeneratedContent(pack);
           setIsFallback(true);
+          saveToHistory(pack, fallbackText, sanitizeSettings(settings), true);
           setError('AI temporarily unavailable — showing offline draft from your notes. Tap Retry with AI to try again.');
-          setShowErrorModal(false);
+          setShowErrorModal(true);
           return;
         }
       }
       const fallbackText = data.text || lastContentText;
       if (fallbackText && fallbackText.length > 80 && !isUserError(msg)) {
-        const pack = buildFallbackPack(fallbackText);
+        const pack = buildFallbackPack(fallbackText, settings);
         setGeneratedContent(pack);
         setIsFallback(true);
+        saveToHistory(pack, fallbackText, sanitizeSettings(settings), true);
         setError(null);
         setShowErrorModal(false);
         return;
@@ -271,9 +341,10 @@ export const AppPage: React.FC = () => {
           <h1 className="display-4 fw-bold mb-2 gradient-text">SmartWay Study Tool</h1>
           <p className="text-bright-muted lead">Transform your notes into comprehensive study materials instantly</p>
         </div>
-        <InputForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <InputForm onSubmit={handleSubmit} isLoading={isLoading} settings={settings} onSettingsChange={setSettings} />
         {isLoading && <LoadingTheater />}
         {generatedContent && !isLoading && <PackReady />}
+        <HistoryPanel />
       </div>
       <ErrorModal show={showErrorModal} onClose={handleCloseError} message={error ? (retryAfter ? `${error} (${retryAfter}s)` : error) : ''} onRetry={lastSubmissionData ? handleRetry : undefined} />
     </div>
