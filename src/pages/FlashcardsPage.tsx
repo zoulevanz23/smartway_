@@ -50,17 +50,21 @@ export const FlashcardsPage: React.FC = () => {
   }
 
   const currentCard = flashcards[currentIndex];
-  const state = currentPack ? { quiz: currentPack.quiz } : location.state;
+  const state = {
+    summaryData: currentPack?.summary ?? location.state?.summaryData,
+    flashcards: currentPack?.flashcards ?? location.state?.flashcards,
+    quiz: currentPack?.quiz ?? location.state?.quiz,
+  };
 
   return (
     <div className="min-vh-100 bg-gradient-main">
       <div className="container-fluid px-3 py-3">
         <StudyNavigation currentPage="flashcards" title="Flashcards" rightContent={<div className="text-bright fs-5 fw-semibold">{currentIndex + 1} / {flashcards.length}</div>} />
-        <TabSelector totalFlashcards={flashcards.length} totalQuestions={state?.quiz?.length || 0} />
+        <TabSelector totalFlashcards={flashcards.length} totalQuestions={state?.quiz?.length || 0} state={state} />
         <div className="d-flex justify-content-center mb-3">
           <div className="flashcard-container position-relative" style={{ width: '100%', maxWidth: '600px', height: '300px', perspective: '1000px' }}>
             <div className="flashcard position-relative w-100 h-100" style={{ transformStyle: 'preserve-3d', cursor: 'pointer' }} onClick={handleFlip}>
-              <div className="flashcard-side position-absolute w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backfaceVisibility: 'hidden', backgroundColor: '#171a26', border: '2px solid #6366F1', borderRadius: '16px', zIndex: isFlipped ? 1 : 2 }}>
+              <div className="flashcard-side position-absolute w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backfaceVisibility: 'hidden', backgroundColor: '#171a26', border: '2px solid #6366F1', borderRadius: '16px', zIndex: isFlipped ? 1 : 2, opacity: isFlipped ? 0 : 1, pointerEvents: 'none', transform: isFlipped ? 'rotateY(-20deg) scale(0.95)' : 'rotateY(0deg) scale(1)', transition: 'opacity 0.25s ease, transform 0.35s ease' }}>
                 <div className="text-center w-100">
                   <div className="mb-3 text-accent-indigo d-flex justify-content-center"><FiHelpCircle size={32} /></div>
                   <h3 className="text-bright fw-bold mb-3 fs-4">Question</h3>
@@ -68,7 +72,7 @@ export const FlashcardsPage: React.FC = () => {
                   <div className="d-flex align-items-center justify-content-center gap-2 text-bright-muted"><FiRotateCw size={16} /><span className="small fw-medium">Click to reveal answer</span></div>
                 </div>
               </div>
-              <div className="flashcard-side position-absolute w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', backgroundColor: '#1e2230', border: '2px solid #8b5cf6', borderRadius: '16px', zIndex: isFlipped ? 2 : 1 }}>
+              <div className="flashcard-side position-absolute w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backfaceVisibility: 'hidden', backgroundColor: '#1e2230', border: '2px solid #8b5cf6', borderRadius: '16px', zIndex: isFlipped ? 2 : 1, opacity: isFlipped ? 1 : 0, pointerEvents: 'none', transform: isFlipped ? 'rotateY(0deg) scale(1)' : 'rotateY(20deg) scale(0.95)', transition: 'opacity 0.25s ease, transform 0.35s ease' }}>
                 <div className="text-center w-100">
                   <div className="mb-3 text-accent-purple d-flex justify-content-center"><FiZap size={32} /></div>
                   <h3 className="text-bright fw-bold mb-3 fs-4">Answer</h3>
