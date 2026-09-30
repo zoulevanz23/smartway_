@@ -10,7 +10,7 @@ import { buildSummaryContent } from '@utils/studyPack';
 export const PackPage: React.FC = () => {
   useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { currentPack, loading, error } = useStudyPack();
+  const { currentPack, record, loading, error } = useStudyPack();
 
   if (loading) {
     return (
@@ -45,8 +45,19 @@ export const PackPage: React.FC = () => {
   return (
     <div className="min-vh-100 bg-gradient-main">
       <div className="container-fluid px-3 py-3">
-        <StudyNavigation title="Shared Study Pack" rightContent={<span className="text-bright-muted small">Shared link</span>} />
-        <TabSelector totalFlashcards={currentPack.flashcards?.length || 0} totalQuestions={currentPack.quiz?.length || 0} />
+        <StudyNavigation
+          title={record ? record.title : 'Shared Study Pack'}
+          rightContent={
+            <span className="text-bright-muted small">
+              {record ? 'From history' : 'Shared link'} · {currentPack.flashcards?.length || 0} cards · {currentPack.quiz?.length || 0} questions
+            </span>
+          }
+        />
+        <TabSelector
+          totalFlashcards={currentPack.flashcards?.length || 0}
+          totalQuestions={currentPack.quiz?.length || 0}
+          state={state}
+        />
         <div className="row justify-content-center">
           <div className="col-12">
             <SummaryView summaryData={currentPack.summary || { overview: '', keyPoints: [], definitions: [] }} />
