@@ -1,229 +1,173 @@
-# SmartWay AI Study Companion
+# SmartWay
 
-🚀 **Transform your documents into comprehensive study materials instantly!**
+A web application that converts uploaded documents or text into study materials (summaries, flashcards, and quizzes) using AI APIs.
 
-An intelligent study companion powered by Google's Gemini AI that automatically generates summaries, flashcards, and quizzes from your uploaded documents or text notes.
+## Project Overview
 
-## ✨ Features
+SmartWay processes user-provided content—either direct text input or uploaded documents (PDF, Word, text files)—and generates structured study materials. The application uses Google Gemini AI or Groq APIs to create summaries, flashcards, and multiple-choice quizzes. Documents are uploaded to Supabase storage, and the API processes them server-side with SSRF protection and file size limits.
 
-### 📄 **Multi-Format Document Support**
-- **PDF Documents** (.pdf) - Full text extraction with advanced parsing
-- **Word Documents** (.docx, .doc) - Complete text extraction from modern and legacy formats
-- **Text Files** (.txt) - Direct text processing
-- **Large File Support** - Handle documents up to **50MB**
+The application is built as a React single-page application with Vercel serverless functions for the backend. State management uses Zustand with localStorage persistence, and the UI is built with Bootstrap 5 and Framer Motion animations. The system includes fallback offline generation when AI APIs are unavailable and implements request throttling to manage API rate limits.
 
-### 🧠 **AI-Powered Study Materials**
-- **Smart Summaries** - Key points, definitions, and concept overviews
-- **Interactive Flashcards** - Dynamic question-answer cards with flip animations
-- **Adaptive Quizzes** - Multiple-choice questions with explanations
-- **Content Optimization** - Intelligent processing for very large documents
-
-### 🔒 **Secure File Handling**
-- **Supabase Integration** - Secure cloud storage for document uploads
-- **Privacy-First** - Files processed securely with automatic cleanup
-- **Real-time Processing** - Instant feedback and progress tracking
-
-### 🎯 **Enhanced User Experience**
-- **Drag & Drop Upload** - Intuitive file upload interface
-- **Progress Tracking** - Real-time upload and processing status
-- **Error Handling** - Clear, actionable error messages
-- **Responsive Design** - Works perfectly on all devices
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ 
-- Supabase account and project
-- Google Gemini API key
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/jayjovaun/smartway.git
-   cd smartway
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   Create a `.env` file in the root directory:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Start the application**
-   ```bash
-   # Development mode (frontend + backend)
-   npm run dev:full
-   
-   # Or separately:
-   npm run dev:server  # Backend only
-   npm run dev         # Frontend only
-   ```
-
-5. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3001
-
-## 📚 Usage
-
-### Document Upload
-1. **Choose Input Method**: Select "Upload Document" tab
-2. **Upload File**: Drag & drop or browse for your document
-3. **Supported Formats**: PDF, Word (.docx, .doc), Text (.txt)
-4. **File Size**: Up to 50MB supported
-5. **Processing**: Automatic text extraction and AI analysis
-
-### Text Input
-1. **Choose Input Method**: Select "Type Text" tab
-2. **Paste Content**: Add your study material (minimum 20 characters)
-3. **Large Content**: Supports up to 200,000 characters
-4. **Processing**: Direct AI analysis of your text
-
-### Study Materials
-- **Summary**: Overview, key points, definitions, important concepts
-- **Flashcards**: Interactive cards with question/answer format
-- **Quiz**: Multiple-choice questions with immediate feedback
-
-## 🛠 Technical Features
+## Key Features
 
 ### Document Processing
-- **PDF Parsing**: Advanced text extraction using `pdf-parse`
-- **Word Processing**: Modern .docx and legacy .doc support via `mammoth`
-- **Error Handling**: Graceful handling of corrupted, encrypted, or image-based documents
-- **Content Validation**: Automatic quality checks and optimization
+- **Multi-format support**: PDF (.pdf), Word (.docx, .doc), and text (.txt) files
+- **Server-side text extraction**: Uses `pdf-parse` for PDFs and `mammoth` for Word documents
+- **File size limits**: 10MB maximum download size enforced server-side
+- **SSRF protection**: File URLs restricted to Supabase storage domains only
 
-### AI Processing
-- **Google Gemini**: Latest Gemini-1.5-flash model for high-quality generation
-- **Smart Chunking**: Automatic content optimization for large documents
-- **Timeout Handling**: 2-minute processing window for complex content
-- **Response Validation**: Comprehensive output verification
+### API Architecture
+- **Serverless functions**: Vercel Node.js 20.x runtime for API endpoints
+- **Request validation**: Zod schemas for input validation on `/api/generate` and `/api/pack`
+- **AI provider fallback**: Primary Gemini API with Groq fallback on 503/429 errors
+- **JSON repair**: Handles truncated AI responses by closing dangling JSON structures
+- **Rate limit handling**: Implements retry logic with exponential backoff
 
-### Performance
-- **Large Files**: 50MB document support with optimized processing
-- **Concurrent Handling**: Multiple simultaneous requests supported
-- **Memory Management**: Efficient buffer handling for large documents
-- **Error Recovery**: Robust retry mechanisms and fallback options
+### State Management
+- **Zustand store**: Client-side state for study packs and history
+- **localStorage persistence**: Persists packs and history with quota error handling
+- **History tracking**: Maintains up to 30 study pack records with metadata
+- **Deterministic caching**: Content-based cache keys to avoid duplicate generations
 
-## 🔧 API Endpoints
+### Security Controls
+- **SSRF allowlist**: File URL validation restricted to `.supabase.co` domains
+- **File size validation**: Server-side 10MB limit enforcement
+- **Input validation**: Zod schema validation for all API requests
+- **CORS configuration**: Configurable origin headers via environment variables
 
-### Health Check
-```bash
-GET /api/health
+### Error Handling
+- **Fallback generation**: Offline study pack creation when AI APIs fail
+- **Request throttling**: 45-second minimum between requests
+- **Retry with countdown**: Automatic retry on rate limit errors with countdown timer
+- **LocalStorage quota handling**: Graceful degradation when storage quota exceeded
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Client[React Client] --> Upload[Supabase Storage]
+    Client --> API[Vercel Serverless Functions]
+    API --> SSRF[SSRF Protection]
+    API --> Validation[Zod Validation]
+    API --> AI[Gemini/Groq API]
+    API --> SupabaseDB[(Supabase Database)]
+    Client --> State[Zustand Store]
+    State --> LocalStorage[(localStorage)]
 ```
 
-### Generate Study Pack
+### Components
+
+- **Frontend**: React 19 + TypeScript + Vite
+- **Backend**: Vercel serverless functions (Node.js 20.x)
+- **Storage**: Supabase (file storage and database)
+- **State**: Zustand with localStorage persistence
+- **UI**: Bootstrap 5 + Framer Motion
+- **Document Processing**: `pdf-parse`, `mammoth`
+
+### API Endpoints
+
+- `POST /api/generate` - Main generation endpoint with count parameters
+- `GET /api/health` - Health check endpoint
+- `POST /api/pack` - Study pack persistence for shareable links
+- `GET /api/pack/:slug` - Retrieve stored study pack by slug
+
+## Development
+
+### Prerequisites
+- Node.js 20+
+- Supabase project with storage bucket
+- Google Gemini API key or Groq API key
+
+### Setup
+
+1. Install dependencies:
 ```bash
-POST /api/generate
-Content-Type: application/json
-
-# Text input
-{
-  "notes": "Your study material text here..."
-}
-
-# File URL input (from Supabase)
-{
-  "fileURL": "https://your-supabase-storage-url/filename.pdf"
-}
+npm install
 ```
 
-## 📁 Project Structure
+2. Configure environment variables (`.env`):
+```env
+GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+ALLOWED_ORIGIN=http://localhost:5173
+```
+
+3. Run development servers:
+```bash
+npm run dev:full  # Both frontend and backend
+# or separately:
+npm run dev        # Frontend only
+npm run dev:server # Backend only
+```
+
+### Build and Deploy
+
+```bash
+npm run build
+npm run deploy    # Deploy to Vercel
+```
+
+## Project Structure
 
 ```
 smartway/
+├── api/                    # Vercel serverless functions
+│   ├── _lib/              # Shared API utilities
+│   │   ├── ssrf.ts        # SSRF protection
+│   │   └── validators.ts  # Zod schemas
+│   ├── generate.js        # Main generation endpoint
+│   ├── health.js          # Health check
+│   └── pack.js            # Pack persistence
 ├── src/
-│   ├── components/          # React components
-│   │   ├── FileDropUpload.tsx   # File upload interface
-│   │   ├── InputForm.tsx        # Main input form
-│   │   └── ...
-│   ├── pages/              # Application pages
-│   │   ├── AppPage.tsx         # Main application
-│   │   ├── SummaryPage.tsx     # Study summary
-│   │   ├── FlashcardsPage.tsx  # Interactive flashcards
-│   │   └── QuizPage.tsx        # Quiz interface
-│   ├── utils/              # Utility functions
-│   │   ├── uploadFile.ts       # Supabase file upload
-│   │   └── prompts.ts          # AI prompt templates
-│   └── lib/
-│       └── supabase.ts         # Supabase configuration
-├── server.js               # Express server with document processing
-├── package.json           # Dependencies and scripts
-└── .env.example           # Environment template
+│   ├── api/               # TypeScript API client
+│   ├── components/        # React components
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # External library configurations
+│   ├── pages/             # Page components
+│   ├── store/             # Zustand stores
+│   ├── styles/            # SCSS styles
+│   └── utils/             # Utility functions
+├── local-api.cjs          # Local development server
+├── vite.config.ts         # Vite configuration
+└── vercel.json            # Vercel deployment config
 ```
 
-## 🌐 Deployment
+## Technical Implementation
 
-### Vercel Deployment
-```bash
-npm run build
-npm run deploy:vercel
+### Cache Key Generation
+The application uses a deterministic cache key based on content hash and generation settings:
+```typescript
+function buildCacheKey(source: string): string {
+  // FNV-1a hash on first 8000 characters + length suffix
+  // Handles UTF-8 characters safely without btoa()
+}
 ```
 
-### Environment Variables for Production
-```env
-NODE_ENV=production
-GEMINI_API_KEY=your_production_gemini_key
-VITE_SUPABASE_URL=your_production_supabase_url
-VITE_SUPABASE_ANON_KEY=your_production_supabase_key
+### JSON Repair for Truncated Responses
+The API includes a repair function for AI responses that exceed token limits:
+```javascript
+function repairTruncatedJson(source) {
+  // Closes dangling arrays/objects and removes trailing commas
+  // Allows partial recovery of valid JSON structure
+}
 ```
 
-## 📄 Supported File Types
+### LocalStorage Quota Handling
+The Zustand store implements error handling for localStorage quota limits:
+```typescript
+setItem: (name, value) => {
+  try {
+    localStorage.setItem(name, value);
+  } catch {
+    // Fallback: trim history to 5 items and retry
+    // Silently fails if still unable to write
+  }
+}
+```
 
-| Format | Extension | Support Level | Max Size |
-|--------|-----------|---------------|----------|
-| PDF | `.pdf` | ✅ Full support | 50MB |
-| Word (Modern) | `.docx` | ✅ Full support | 50MB |
-| Word (Legacy) | `.doc` | ⚠️ Limited support | 50MB |
-| Text | `.txt` | ✅ Full support | 50MB |
+## License
 
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Document Processing Errors:**
-- Ensure document is not password-protected
-- Check file is not corrupted or image-based
-- Verify file size is under 50MB
-
-**Upload Failures:**
-- Check Supabase configuration
-- Verify network connectivity
-- Ensure file type is supported
-
-**AI Generation Issues:**
-- Verify Gemini API key is valid
-- Check content length (minimum 20 characters)
-- Ensure stable internet connection
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📜 License
-
-MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Google Gemini AI** - Advanced natural language processing
-- **Supabase** - Secure file storage and database
-- **React** - Frontend framework
-- **Mammoth.js** - Word document processing
-- **pdf-parse** - PDF text extraction
-
----
-
-**Made by Josh Ivan Sartin**
-
-Transform your learning experience with AI-powered study materials!
+MIT
