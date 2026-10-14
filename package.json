@@ -12,7 +12,7 @@
     "dev:server": "node local-api.cjs",
     "dev:full": "concurrently \"node local-api.cjs\" \"vite\"",
     "build": "vite build",
-    "start": "vite preview",
+    "start": "node server.cjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss}\"",
@@ -34,7 +34,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^6.26.2",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -62,7 +63,6 @@
     "vercel": "^38.0.0",
     "vite": "^5.4.11",
     "vitest": "^5.0.0",
-    "zod": "^4.5.4",
     "zustand": "^5.0.15"
   },
   "keywords": [

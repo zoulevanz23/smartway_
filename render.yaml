@@ -1,0 +1,36 @@
+# Render Blueprint — one-click deploy of the SmartWay Docker container.
+# Dashboard: New > Blueprint > select this repo. Then fill the `sync: false`
+# values in the dashboard (never commit secrets here).
+#
+# Notes:
+# - Render translates these env vars to Docker build args automatically,
+#   so VITE_* below are baked into the frontend at build time AND the
+#   server-side keys are available at runtime. Our Dockerfile only declares
+#   ARG for VITE_*, so secrets are NOT baked into image layers.
+# - Render injects PORT itself; server.cjs respects it. Do not hardcode PORT.
+# - Free tier sleeps after ~15 min idle (cold start ~30-60s on first hit).
+
+services:
+  - type: web
+    name: smartway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_ORIGIN
+        value: "*"
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_BUCKET
+        value: uploads
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
