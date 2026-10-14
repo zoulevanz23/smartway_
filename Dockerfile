@@ -2,6 +2,9 @@
 # Stage 1: build the Vite frontend
 FROM node:20-alpine AS build
 WORKDIR /app
+# Image ships npm 10.8.x whose `npm ci` crashes (edgesOut) on this lockfile.
+# Match the npm major used to generate package-lock.json.
+RUN npm install -g npm@11
 COPY package*.json ./
 RUN npm ci
 COPY . .
@@ -21,7 +24,9 @@ RUN npm run build
 FROM node:20-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
+RUN npm install -g npm@11
 COPY package*.json ./
+COPY .npmrc ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY api ./api
