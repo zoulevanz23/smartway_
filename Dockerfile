@@ -6,6 +6,7 @@ WORKDIR /app
 # Match the npm major used to generate package-lock.json.
 RUN npm install -g npm@11
 COPY package*.json ./
+COPY .npmrc ./
 RUN npm ci
 COPY . .
 # VITE_* vars are baked into the frontend at build time.
